@@ -1,4 +1,4 @@
-# task3
+# Сканер портов
 
 Задание № 3 для курса "Протоколы Интернета"
 
@@ -62,8 +62,8 @@ python checker.py 100 200 localhost
 
 Фото из ```netstat -a```
 
-![UDP](./images/udp.png)
-![TCP](./images/tcp.png)
+![UDP](./images/udp.PNG)
+![TCP](./images/tcp.PNG)
 
 2. На 8000 порту поднят http сервер. 
 
@@ -85,7 +85,7 @@ python checker.py 100 200 localhost
 Открыт TCP порт 8000. Протокол: HTTP
 ```
 
-![HTTP](/images/http.png)
+![HTTP](/images/http.PNG)
 
 3. Проверяем, как работает определение протоколов на удалённых хостах
 
