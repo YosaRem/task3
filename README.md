@@ -62,8 +62,8 @@ python checker.py 100 200 localhost
 
 Фото из ```netstat -a```
 
-![UDP](/images/udp.png)
-![TCP](/images/tcp.png)
+![UDP](./images/udp.png)
+![TCP](./images/tcp.png)
 
 2. На 8000 порту поднят http сервер. 
 
@@ -85,7 +85,7 @@ python checker.py 100 200 localhost
 Открыт TCP порт 8000. Протокол: HTTP
 ```
 
-![HTTP](/images/tcp.png)
+![HTTP](/images/http.png)
 
 3. Проверяем, как работает определение протоколов на удалённых хостах
 
