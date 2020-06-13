@@ -48,14 +48,16 @@ def check_udp(start, end, domain):
 
 
 def check_dns(domain, port, s):
-    d = b"\xaa\xaa\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00"
-    s.sendto(d, (domain, port))
-    s.settimeout(0.5)
-    data, sender = s.recvfrom(256)
-    print(data)
-    if data[2: 4] != b"\x01\x00":
-        udp_result.append(f"Открыт UDP порт {port}. Протокол: DNS")
-        return True
+    try:
+        d = b"\xaa\xaa\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00"
+        s.sendto(d, (domain, port))
+        s.settimeout(0.5)
+        data, sender = s.recvfrom(256)
+        if data[2: 4] != b"\x01\x00":
+            udp_result.append(f"Открыт UDP порт {port}. Протокол: DNS")
+            return True
+    except socket.timeout:
+        return False
 
 
 def check_sntp(domain, port, s):
@@ -66,8 +68,10 @@ def check_sntp(domain, port, s):
     data, sender = s.recvfrom(512)
     try:
         answer.unpack(data)
-        udp_result.append(f"Открые UDP порт {port}. Протокол: ntp")
-    except: pass
+        udp_result.append(f"Открые UDP порт {port}. Протокол: NTP")
+        return True
+    except:
+        return False
 
 
 def check_http(domain, port):
@@ -93,9 +97,11 @@ def check_smtp(domain, port, tcp=False):
     try:
         s = smtplib.SMTP(domain, port, timeout=1)
         s.login("0", "0")
-    except socket.timeout:
+    except socket.timeout or ConnectionRefusedError:
         return False
-    except smtplib.SMTPException:
+    except smtplib.SMTPException as e:
+        if len(str(e).split(":")) != 1:
+            return False
         if tcp:
             tcp_result.append(f"Открыт TCP порт {port}. Протокол: SMTP")
         else:
@@ -121,10 +127,11 @@ def check_pop3(domain, port, tcp=False):
 
 def check_udp_protocols(domain):
     print("Начата проверка протоколов на UDP портах")
+    print()
     stamp = datetime.datetime.now()
     for i in open_udp:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.settimeout(0.5)
+            s.settimeout(1)
             if check_dns(domain, i, s):
                 continue
             if check_sntp(domain, i, s):
@@ -133,6 +140,7 @@ def check_udp_protocols(domain):
                 continue
         udp_result.append(f"Открыт UDP порт {i}. Узнать протокол не удалось")
     print(f"Закончена проверка протоколов на UDP. Прошло: {datetime.datetime.now() - stamp}")
+    print()
 
 
 def check_tcp_protocols(domain):
@@ -147,6 +155,7 @@ def check_tcp_protocols(domain):
             continue
         tcp_result.append(f"Открыт TCP порт {i}. Узнать протокол не удалось")
     print(f"Закончена проверка протоколов на TCP. Прошло: {datetime.datetime.now() - stamp}")
+    print()
 
 
 def main():
@@ -154,22 +163,31 @@ def main():
     parser.add_argument("start", type=int, help="Порт, с которого начнётся скан")
     parser.add_argument("end", type=int, help="Порт, на котором закончится скан")
     parser.add_argument("domain", default="127.0.0.1", help="Домен, на котором проводится сканирование")
+    parser.add_argument("--hard", required=False, default=False, type=bool,
+                        help="Для проверки определения протокола на удалённом хосте")
     args = parser.parse_args()
     if args.start > args.end:
         raise ValueError("Начальный порт не может быть больше конечного порта")
-    tcp = threading.Thread(target=check_tcp, args=(args.start, args.end + 1, args.domain))
-    udp = threading.Thread(target=check_udp, args=(args.start, args.end + 1, args.domain))
-    tcp.start(), udp.start()
-    tcp.join()
-    udp.join()
-    tcp_proto = threading.Thread(target=check_tcp_protocols, args=(args.domain,))
-    udp_proto = threading.Thread(target=check_udp_protocols, args=(args.domain,))
-    tcp_proto.start(), udp_proto.start()
-    tcp_proto.join(), udp_proto.join()
-    for i in tcp_result:
-        print(i)
-    for i in udp_result:
-        print(i)
+    if not args.hard:
+        tcp = threading.Thread(target=check_tcp, args=(args.start, args.end + 1, args.domain))
+        udp = threading.Thread(target=check_udp, args=(args.start, args.end + 1, args.domain))
+        tcp.start(), udp.start()
+        print()
+        tcp.join(), udp.join()
+        print()
+        tcp_proto = threading.Thread(target=check_tcp_protocols, args=(args.domain,))
+        udp_proto = threading.Thread(target=check_udp_protocols, args=(args.domain,))
+        tcp_proto.start(), udp_proto.start()
+        tcp_proto.join(), udp_proto.join()
+        for i in tcp_result:
+            print(i)
+        for i in udp_result:
+            print(i)
+    open_udp.append(args.start)
+    if args.hard:
+        check_udp_protocols(args.domain)
+        for i in udp_result:
+            print(i)
 
 
 if __name__ == "__main__":
